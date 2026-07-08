@@ -1,29 +1,3 @@
-#!/usr/bin/env python3
-"""
-Randomize 40 samples onto an 8x5 plate (A01-H05) and color by group.
-
-Input CSV expected columns:
-- Sample_ID
-- Group
-
-Optional:
-- Well (ignored if present; wells are reassigned)
-- any extra columns are preserved in the output sheets
-
-Output Excel workbook contains:
-- Original_Sample_List: the original input order
-- Sample_List: randomized samples with assigned wells
-- Plate_Map: 8x5 plate layout with Sample_ID only
-- Legend: group-to-color mapping
-
-This version:
-- Works on Windows in VS Code
-- Uses paths relative to a data folder you set below
-- Automatically generates distinct colors for any number of groups
-- Keeps the 8x5 plate only
-- Removes Group text from Plate_Map, while still using group colors
-"""
-
 import colorsys
 import random
 import sys
@@ -38,8 +12,8 @@ from openpyxl.utils import get_column_letter
 # -----------------------------
 # User settings
 # -----------------------------
-INPUT_CSV = Path(r"W:\OneDrive\Desktop\Platemap generator\Well_template.csv")
-OUTPUT_XLSX = Path(r"W:\OneDrive\Desktop\Platemap generator\randomized_plate_map_woGroupInfo.xlsx")
+INPUT_CSV = Path(r"Well_template.csv")
+OUTPUT_XLSX = Path(r"randomized_plate_map_woGroupInfo.xlsx")
 
 SEED = 42
 
