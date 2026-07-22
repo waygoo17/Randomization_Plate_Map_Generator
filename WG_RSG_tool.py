@@ -1,3 +1,34 @@
+#!/usr/bin/env python3
+"""
+Randomize 40 samples onto an 8x5 plate (A01-H05) and color by group.
+
+Input CSV expected columns:
+- Sample_ID
+- Group
+
+Optional:
+- Well (ignored if present; wells are reassigned)
+- any extra columns are preserved in the output sheets
+
+Output Excel workbook contains:
+- Original_Sample_List: the original input order
+- Sample_List: randomized samples with assigned wells
+- Plate_Map: 8x5 plate layout with Sample_ID only
+- Legend: group-to-color mapping
+
+This version:
+- Works on Windows in VS Code
+- Accepts input/output paths via command-line arguments (with sensible defaults)
+- Automatically generates distinct colors for any number of groups
+- Keeps the 8x5 plate only
+- Removes Group text from Plate_Map, while still using group colors
+
+Usage:
+    python WG_RSG_tool.py
+    python WG_RSG_tool.py --input data/Well_template.csv --output data/plate_map.xlsx --seed 42
+"""
+
+import argparse
 import colorsys
 import random
 import sys
@@ -9,13 +40,10 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 
-# -----------------------------
-# User settings
-# -----------------------------
-INPUT_CSV = Path(r"Well_template.csv")
-OUTPUT_XLSX = Path(r"randomized_plate_map_woGroupInfo.xlsx")
-
-SEED = 42
+# Default paths (relative to this script's directory)
+_HERE = Path(__file__).parent
+_DEFAULT_INPUT  = _HERE.parent / "datasheet" / "Well_template.csv"
+_DEFAULT_OUTPUT = _HERE.parent / "datasheet" / "randomized_plate_map_woGroupInfo.xlsx"
 
 # Fixed 8 x 5 plate layout
 ROWS = list("ABCDEFGH")
@@ -67,12 +95,7 @@ def assign_randomized_wells(df, seed, rows, cols):
 
     if len(randomized) < len(wells):
         blank_count = len(wells) - len(randomized)
-        blank_df = pd.DataFrame(
-            {
-                "Sample_ID": [""] * blank_count,
-                "Group": [""] * blank_count,
-            }
-        )
+        blank_df = pd.DataFrame({col: [""] * blank_count for col in df.columns})
         randomized = pd.concat([randomized, blank_df], ignore_index=True)
 
     randomized["Well"] = wells[: len(randomized)]
@@ -137,7 +160,6 @@ def make_plate_matrix(df, rows, cols):
         for c in cols:
             well = "{}{:02d}".format(r, c)
             sample = lookup.get(well, {}).get("Sample_ID", "")
-            group = lookup.get(well, {}).get("Group", "")
             if sample:
                 matrix.loc[r, "{:02d}".format(c)] = sample
             else:
@@ -274,15 +296,26 @@ def write_excel(original_df, randomized_df, output_xlsx, seed, rows, cols):
     print("Sheets created: Original_Sample_List, Sample_List, Plate_Map, Legend")
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Randomize samples onto a plate and export to Excel.")
+    parser.add_argument("--input",  type=Path, default=_DEFAULT_INPUT,  help="Path to input CSV (default: %(default)s)")
+    parser.add_argument("--output", type=Path, default=_DEFAULT_OUTPUT, help="Path to output XLSX (default: %(default)s)")
+    parser.add_argument("--seed",   type=int,  default=42,              help="Random seed (default: %(default)s)")
+    return parser.parse_args()
+
+
 def main():
-    if not INPUT_CSV.exists():
-        print("Error: cannot find input file: {}".format(INPUT_CSV), file=sys.stderr)
+    args = parse_args()
+
+    if not args.input.exists():
+        print("Error: cannot find input file: {}".format(args.input), file=sys.stderr)
         sys.exit(1)
 
-    original_df = load_samples(INPUT_CSV)
-    randomized_df = assign_randomized_wells(original_df, SEED, ROWS, COLS)
-    write_excel(original_df, randomized_df, OUTPUT_XLSX, SEED, ROWS, COLS)
+    original_df = load_samples(args.input)
+    randomized_df = assign_randomized_wells(original_df, args.seed, ROWS, COLS)
+    write_excel(original_df, randomized_df, args.output, args.seed, ROWS, COLS)
 
 
 if __name__ == "__main__":
     main()
+
